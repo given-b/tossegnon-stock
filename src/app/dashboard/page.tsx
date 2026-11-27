@@ -1,18 +1,18 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
-import { logout } from "../login/actions";
+import Nav from "@/components/Nav";
+import { requireUser } from "@/lib/auth";
 
 export default async function Dashboard() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const user = await requireUser();
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold">Bonjour {session.nom}</h1>
-      <p className="text-stone-600">Rôle : {session.role}</p>
-      <form action={logout} className="mt-4">
-        <button className="border border-stone-400 px-4 py-2">Déconnexion</button>
-      </form>
-    </main>
+    <>
+      <Nav role={user.role} nom={user.nom} />
+      <main className="max-w-4xl mx-auto p-4">
+        <h1 className="text-2xl font-semibold">Bonjour {user.nom}</h1>
+        <p className="mt-1 text-stone-600">
+          Les statistiques des Gmail et des liens TikTok arrivent à l'étape suivante.
+        </p>
+      </main>
+    </>
   );
 }
