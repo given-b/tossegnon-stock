@@ -8,6 +8,8 @@ export default function Nav({ role, nom }: { role: string; nom: string }) {
         <span className="font-semibold">Tossegnon Stock</span>
         <nav className="flex flex-wrap gap-4 text-sm">
           <Link href="/dashboard">Dashboard</Link>
+          <Link href="/comptes">Comptes</Link>
+          <Link href="/comptes/nouveau">Ajouter</Link>
           {role === "super_admin" && <Link href="/admins">Administrateurs</Link>}
           <Link href="/profil">Mon profil</Link>
         </nav>
