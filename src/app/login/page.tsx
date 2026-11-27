@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { login } from "./actions";
 
@@ -19,6 +20,9 @@ export default function LoginPage() {
           className="w-full bg-stone-900 text-white py-3 font-medium disabled:opacity-60">
           {pending ? "Connexion…" : "Se connecter"}
         </button>
+        <Link href="/forgot" className="block text-center text-sm text-stone-600 underline">
+          Mot de passe oublié ?
+        </Link>
       </form>
     </main>
   );
