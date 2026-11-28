@@ -8,10 +8,12 @@ export default function TopBar({
   nom,
   role,
   notifs,
+  avatarUrl,
 }: {
   nom: string;
   role: string;
   notifs: Notif[];
+  avatarUrl: string | null;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -63,15 +65,21 @@ export default function TopBar({
         )}
       </div>
 
-      <div className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/70 py-2 pl-2 pr-4 backdrop-blur-md">
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-teal-700 to-teal-400 font-semibold text-white">
-          {nom.charAt(0).toUpperCase()}
-        </span>
+      <a href="/profil"
+        className="flex items-center gap-3 rounded-2xl border border-white/80 bg-white/70 py-2 pl-2 pr-4 backdrop-blur-md">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt={nom} className="h-9 w-9 rounded-full object-cover" />
+        ) : (
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-teal-700 to-teal-400 font-semibold text-white">
+            {nom.charAt(0).toUpperCase()}
+          </span>
+        )}
         <div className="hidden leading-tight sm:block">
           <p className="text-sm font-medium">{nom}</p>
           <p className="text-xs text-stone-500">{role === "super_admin" ? "Super admin" : "Administrateur"}</p>
         </div>
-      </div>
+      </a>
     </div>
   );
 }
