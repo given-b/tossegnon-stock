@@ -5,6 +5,7 @@ import TopBar from "@/components/TopBar";
 import ProgressBar from "@/components/ProgressBar";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+import { avatarUrl } from "@/lib/avatar";
 
 const MONTH_GOAL = 50; // objectif de fiches par mois : modifiez ce nombre
 
@@ -31,6 +32,7 @@ async function count(since?: Date) {
 
 export default async function Dashboard() {
   const me = await requireUser();
+  const myAvatar = await avatarUrl(me.avatar_path);
 
   const now = new Date();
   const startDay = new Date(now);
@@ -88,7 +90,7 @@ export default async function Dashboard() {
     <>
       <Nav role={me.role} nom={me.nom} />
       <main className="mx-auto max-w-5xl space-y-5 p-4">
-        <TopBar nom={me.nom} role={me.role} notifs={notifs} />
+        <TopBar nom={me.nom} role={me.role} notifs={notifs} avatarUrl={myAvatar} />
 
         <div>
           <p className="text-sm font-medium text-teal-700">Bienvenue, {me.nom}</p>
@@ -180,4 +182,4 @@ export default async function Dashboard() {
       </main>
     </>
   );
-                    }
+}
