@@ -8,7 +8,7 @@ export async function requireUser(opts?: { allowMustChange?: boolean }) {
 
   const { data } = await db
     .from("users")
-    .select("id,nom,email,role,must_change_password")
+    .select("id,nom,email,role,must_change_password,avatar_path")
     .eq("id", s.id)
     .single();
   if (!data) redirect("/login");
