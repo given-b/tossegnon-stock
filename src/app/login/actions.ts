@@ -9,31 +9,27 @@ export async function login(_prev: unknown, formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
 
-  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
-  const { count } = await db
-    .from("login_attempts")
-    .select("id", { count: "exact", head: true })
-    .eq("email", email)
-    .gte("created_at", since);
-  if ((count ?? 0) >= 5) {
-    return { error: "Trop de tentatives. Réessayez dans 15 minutes." };
-  }
-
-  const { data: user } = await db
+  const { data: user, error } = await db
     .from("users")
     .select("*")
     .eq("email", email)
     .maybeSingle();
 
-  const ok =
-    user && user.statut === "actif" && (await bcrypt.compare(password, user.password_hash));
-  if (!ok) {
-    await db.from("login_attempts").insert({ email });
-    return { error: "E-mail ou mot de passe incorrect." };
+  if (error) return { error: "DEBUG base : " + error.message };
+  if (!user) return { error: "DEBUG : aucun compte pour " + email };
+  if (user.statut !== "actif") return { error: "DEBUG : compte " + user.statut };
+
+  const good = await bcrypt.compare(password, user.password_hash);
+  if (!good) {
+    return { error: "DEBUG : mot de passe refusé (longueur saisie : " + password.length + ")" };
   }
 
-  await db.from("login_attempts").delete().eq("email", email);
-  await createSession({ id: user.id, role: user.role, nom: user.nom });
+  try {
+    await createSession({ id: user.id, role: user.role, nom: user.nom });
+  } catch (e) {
+    return { error: "DEBUG session : " + (e instanceof Error ? e.message : "erreur") };
+  }
+
   await db.from("activity_logs").insert({ user_id: user.id, action: "connexion" });
   redirect("/dashboard");
 }
