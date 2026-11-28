@@ -13,6 +13,7 @@ const ICONS: Record<string, string> = {
   user: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
   out: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9",
   menu: "M3 6h18M3 12h18M3 18h18",
+  clock: "M12 6v6l4 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z",
 };
 
 function Icon({ name }: { name: string }) {
@@ -44,7 +45,10 @@ export default function Nav({ role, nom }: { role: string; nom: string }) {
     { href: "/comptes", label: "Comptes", icon: "list" },
     { href: "/comptes/nouveau", label: "Ajouter", icon: "plus" },
     ...(role === "super_admin"
-      ? [{ href: "/admins", label: "Administrateurs", icon: "shield" }]
+      ? [
+          { href: "/admins", label: "Administrateurs", icon: "shield" },
+          { href: "/journal", label: "Journal", icon: "clock" },
+        ]
       : []),
     { href: "/profil", label: "Mon profil", icon: "user" },
   ];
@@ -115,4 +119,4 @@ export default function Nav({ role, nom }: { role: string; nom: string }) {
       </aside>
     </>
   );
-      }
+                     }
