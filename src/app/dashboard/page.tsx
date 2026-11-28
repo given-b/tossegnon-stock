@@ -1,8 +1,26 @@
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import StatCard from "@/components/StatCard";
+import TopBar from "@/components/TopBar";
+import ProgressBar from "@/components/ProgressBar";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
+
+const MONTH_GOAL = 50; // objectif de fiches par mois : modifiez ce nombre
+
+const MAIL = "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6";
+const LINK = "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7";
+const SUN = "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4";
+const CAL = "M3 4h18v18H3zM16 2v4M8 2v4M3 10h18";
+
+const LABELS: Record<string, string> = {
+  ajout_compte: "a ajouté une fiche",
+  modification_compte: "a modifié une fiche",
+  creation_admin: "a créé un administrateur",
+  suspension_admin: "a suspendu un administrateur",
+  reactivation_admin: "a réactivé un administrateur",
+  suppression_admin: "a supprimé un administrateur",
+};
 
 async function count(since?: Date) {
   let q = db.from("accounts").select("id", { count: "exact", head: true });
@@ -10,11 +28,6 @@ async function count(since?: Date) {
   const { count: c } = await q;
   return c ?? 0;
 }
-
-const MAIL = "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM22 6l-10 7L2 6";
-const LINK = "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7";
-const SUN = "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4";
-const CAL = "M3 4h18v18H3zM16 2v4M8 2v4M3 10h18";
 
 export default async function Dashboard() {
   const me = await requireUser();
@@ -24,11 +37,7 @@ export default async function Dashboard() {
   startDay.setUTCHours(0, 0, 0, 0);
   const startMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-  const [total, today, month] = await Promise.all([
-    count(),
-    count(startDay),
-    count(startMonth),
-  ]);
+  const [total, today, month] = await Promise.all([count(), count(startDay), count(startMonth)]);
 
   const { count: links } = await db
     .from("accounts")
@@ -40,10 +49,12 @@ export default async function Dashboard() {
   all?.forEach((a) => {
     if (a.created_by) perUser[a.created_by] = (perUser[a.created_by] ?? 0) + 1;
   });
-  const uids = Object.keys(perUser);
-  const { data: us } = uids.length
-    ? await db.from("users").select("id,nom").in("id", uids)
-    : { data: [] as { id: string; nom: string }[] };
+
+  const { data: users } = await db.from("users").select("id,nom,role");
+  const standings = (users ?? [])
+    .map((u) => ({ ...u, n: perUser[u.id] ?? 0 }))
+    .sort((a, b) => b.n - a.n);
+  const best = Math.max(1, ...standings.map((s) => s.n));
 
   const { data: recent } = await db
     .from("accounts")
@@ -51,10 +62,34 @@ export default async function Dashboard() {
     .order("created_at", { ascending: false })
     .limit(5);
 
+  let logQuery = db
+    .from("activity_logs")
+    .select("id,user_id,action,created_at")
+    .in("action", Object.keys(LABELS))
+    .order("created_at", { ascending: false })
+    .limit(6);
+  if (me.role !== "super_admin") logQuery = logQuery.eq("user_id", me.id);
+  const { data: logs } = await logQuery;
+
+  const nameById: Record<string, string> = {};
+  users?.forEach((u) => (nameById[u.id] = u.nom));
+  const notifs = (logs ?? []).map((l) => ({
+    id: l.id,
+    text: `${l.user_id ? nameById[l.user_id] ?? "Quelqu'un" : "Quelqu'un"} ${LABELS[l.action]}`,
+    date: new Date(l.created_at).toLocaleString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  }));
+
   return (
     <>
       <Nav role={me.role} nom={me.nom} />
-      <main className="max-w-4xl mx-auto p-4 space-y-5">
+      <main className="mx-auto max-w-5xl space-y-5 p-4">
+        <TopBar nom={me.nom} role={me.role} notifs={notifs} />
+
         <div>
           <p className="text-sm font-medium text-teal-700">Bienvenue, {me.nom}</p>
           <h1 className="text-3xl font-semibold">Dashboard</h1>
@@ -71,34 +106,63 @@ export default async function Dashboard() {
             tint="bg-gradient-to-br from-sky-500 to-cyan-400" />
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <section className="bg-white p-4">
-            <h2 className="mb-2 font-semibold">Ajouts par administrateur</h2>
-            {!us?.length && <p className="text-sm text-stone-600">Aucun ajout pour le moment.</p>}
-            {us?.map((u) => (
-              <div key={u.id}
-                className="flex justify-between border-b border-stone-200/70 py-2 text-sm last:border-0">
-                <span>{u.nom}</span>
-                <span className="rounded-full bg-teal-500/15 px-3 font-medium text-teal-800">
-                  {perUser[u.id]}
+        <div className="grid gap-3 md:grid-cols-5">
+          <section className="bg-white p-4 md:col-span-3">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold">Classement des administrateurs</h2>
+              <Link href="/comptes" className="text-sm text-teal-700 hover:underline">Voir les fiches</Link>
+            </div>
+            {!standings.length && <p className="text-sm text-stone-600">Aucun utilisateur.</p>}
+            {standings.map((s, i) => (
+              <div key={s.id}
+                className="grid grid-cols-[1.5rem_1fr_3rem] items-center gap-3 border-b border-stone-200/70 py-2 last:border-0">
+                <span className={`text-sm font-semibold ${i === 0 ? "text-amber-600" : "text-stone-500"}`}>
+                  {i + 1}
                 </span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {s.nom}
+                    {s.role === "super_admin" && (
+                      <span className="ml-2 rounded-full bg-teal-500/15 px-2 py-0.5 text-xs text-teal-800">
+                        Super admin
+                      </span>
+                    )}
+                  </p>
+                  <div className="mt-1">
+                    <ProgressBar value={s.n} goal={best} thin />
+                  </div>
+                </div>
+                <span className="text-right text-sm font-semibold">{s.n}</span>
               </div>
             ))}
           </section>
 
-          <section className="bg-white p-4">
-            <h2 className="mb-2 font-semibold">Dernières fiches</h2>
-            {!recent?.length && <p className="text-sm text-stone-600">Aucune fiche.</p>}
-            {recent?.map((r) => (
-              <div key={r.id}
-                className="flex justify-between gap-2 border-b border-stone-200/70 py-2 text-sm last:border-0">
-                <span className="break-all">{r.gmail}</span>
-                <span className="shrink-0 text-stone-500">
-                  {new Date(r.created_at).toLocaleDateString("fr-FR")}
-                </span>
-              </div>
-            ))}
-          </section>
+          <div className="space-y-3 md:col-span-2">
+            <section className="bg-white p-4">
+              <h2 className="mb-1 font-semibold">Objectif du mois</h2>
+              <p className="mb-3 text-sm text-stone-600">
+                {month} fiche{month > 1 ? "s" : ""} sur {MONTH_GOAL}
+              </p>
+              <ProgressBar value={month} goal={MONTH_GOAL} />
+              <p className="mt-2 text-right text-sm font-medium text-teal-800">
+                {Math.min(100, Math.round((month / MONTH_GOAL) * 100))} %
+              </p>
+            </section>
+
+            <section className="bg-white p-4">
+              <h2 className="mb-2 font-semibold">Dernières fiches</h2>
+              {!recent?.length && <p className="text-sm text-stone-600">Aucune fiche.</p>}
+              {recent?.map((r) => (
+                <div key={r.id}
+                  className="flex justify-between gap-2 border-b border-stone-200/70 py-2 text-sm last:border-0">
+                  <span className="break-all">{r.gmail}</span>
+                  <span className="shrink-0 text-stone-500">
+                    {new Date(r.created_at).toLocaleDateString("fr-FR")}
+                  </span>
+                </div>
+              ))}
+            </section>
+          </div>
         </div>
 
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-700 to-teal-500 p-6 text-white shadow-xl shadow-teal-700/25">
@@ -116,4 +180,4 @@ export default async function Dashboard() {
       </main>
     </>
   );
-            }
+                    }
