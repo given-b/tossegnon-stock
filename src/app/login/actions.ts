@@ -9,6 +9,16 @@ export async function login(_prev: unknown, formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
 
+  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { count } = await db
+    .from("login_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("email", email)
+    .gte("created_at", since);
+  if ((count ?? 0) >= 5) {
+    return { error: "Trop de tentatives. Réessayez dans 15 minutes." };
+  }
+
   const { data: user } = await db
     .from("users")
     .select("*")
@@ -17,8 +27,12 @@ export async function login(_prev: unknown, formData: FormData) {
 
   const ok =
     user && user.statut === "actif" && (await bcrypt.compare(password, user.password_hash));
-  if (!ok) return { error: "E-mail ou mot de passe incorrect." };
+  if (!ok) {
+    await db.from("login_attempts").insert({ email });
+    return { error: "E-mail ou mot de passe incorrect." };
+  }
 
+  await db.from("login_attempts").delete().eq("email", email);
   await createSession({ id: user.id, role: user.role, nom: user.nom });
   await db.from("activity_logs").insert({ user_id: user.id, action: "connexion" });
   redirect("/dashboard");
