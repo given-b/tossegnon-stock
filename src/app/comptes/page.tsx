@@ -3,6 +3,7 @@ import Nav from "@/components/Nav";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import PasswordReveal from "./PasswordReveal";
+import DeleteAccountButton from "./DeleteAccountButton";
 
 const MAX_EDITS = 2;
 
@@ -83,6 +84,7 @@ export default async function ComptesPage({
                 </div>
 
                 <PasswordReveal id={a.id} />
+                {isSuper && <DeleteAccountButton id={a.id} />}
 
                 <div className="flex gap-2">
                   <a href={a.tiktok_url} target="_blank" rel="noopener noreferrer"
